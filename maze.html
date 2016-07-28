@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<canvas id="myCanvas" width="100%" height="100%">
+Your browser does not support the HTML5 canvas tag. :(
+</canvas>
+
+<script>
+var c = document.getElementById("myCanvas");
+var ctx = c.getContext("2d");
+ctx.canvas.width  = window.innerWidth - 30;
+ctx.canvas.height = window.innerHeight - 30;
+ctx.beginPath();
+
+//function: render drawing given 2D array
+function drawMaze(maze){
+	var scale = 20;
+	var lOffset = 0;
+	var wOffset = 0;
+
+	for (var i = 0; i<maze.length; i++){
+		for (var j = 0; j<maze[0].length; j++){
+			if (maze[i][j] >= 100000){ //draw N
+				ctx.moveTo(lOffset, wOffset);
+				ctx.lineTo(lOffset, wOffset+scale);
+				ctx.stroke();
+			}
+
+			if ( (maze[i][j] % 1000 ) >= 100){ //draw W
+				ctx.moveTo(lOffset, wOffset);
+				ctx.lineTo(lOffset+scale, wOffset);
+				ctx.stroke();
+			}
+
+			wOffset += scale;
+		}
+		lOffset += scale;
+		wOffset = 0;
+	}
+	
+	wOffset = scale*maze[0].length;
+
+	ctx.moveTo(0, wOffset);
+	ctx.lineTo(lOffset, wOffset);
+	ctx.lineTo(lOffset, 0);
+	ctx.stroke();
+	
+	scale -=2;
+	ctx.globalAlpha = 0.8;
+	ctx.fillStyle="#F3C9B2";
+	ctx.fillRect(1,1,scale,scale);
+	ctx.fillStyle="#E9F4D9";
+	ctx.fillRect(lOffset-scale,wOffset-scale,scale,scale);
+	
+}
+
+function createMaze(length, width){
+	var m = [];
+	var mods = [
+				[-1,0], //N
+				[0,1],  //E
+				[1,0],  //S
+				[0,-1]  //W
+			];
+
+	var unavailNeighbors = 0;
+
+	for(var lIndex = 0; lIndex<length; lIndex++){
+		var r = [];
+		for(var wIndex = 0; wIndex<width; wIndex++){
+			r.push(111100 + unavailNeighbors);
+		}
+		m.push(r);
+	}
+
+	return m;
+}
+
+//function: generate maze given
+// N S E W V H
+function fillMaze(maze, stack){
+
+	//1	Make the initial cell the current cell and mark it as visited
+	var lIndex = 0;
+	var wIndex = 0;
+
+	var mods = [
+				[-1,0,100000,10000], //N
+				[0,1,1000,100],  //E
+				[1,0,10000,100000],  //S
+				[0,-1,100,1000]  //W
+			];
+
+	maze[lIndex][wIndex] = maze[lIndex][wIndex] + 10;
+	var visitedCount = 1;
+
+	//2	While there are unvisited cells
+	while(visitedCount < ((maze.length) * (maze[0].length))){
+
+		//1	If the current cell has any neighbours which have not been visited (unhappy)
+		var visitedNeighbors = 0;
+		for (var a = 0; a<4; a++){
+			var i = mods[a][0] + lIndex;
+			var j = mods[a][1] + wIndex;
+			//safety first
+			if ( i>= 0 && j>= 0 && i<maze.length && j<maze[0].length){
+				if((maze[i][j] % 100) >= 10){
+					visitedNeighbors++;
+				}
+			} else {
+				visitedNeighbors++;
+			}
+		}
+
+		if( visitedNeighbors < 4){
+			//1	Choose randomly one of the unvisited neighbours
+					//**(you can influence the likelihood of which neighbor you should visit)**
+			var unvisitedNeighbors = [];
+			
+			for (var a = 0; a<4; a++){
+				var i = mods[a][0] + lIndex;
+				var j = mods[a][1] + wIndex;
+				var dir = mods[a][2];
+				var dirR = mods[a][3];
+				//safety first
+				if ( i>= 0 && j>= 0 && i<maze.length && j<maze[0].length){
+					if((maze[i][j] % 100) < 10){
+						unvisitedNeighbors.push([i,j, dir, dirR]);
+					}		
+				}
+			}
+
+
+			if (unvisitedNeighbors.length > 0){
+				console.log(unvisitedNeighbors.length);
+
+				var chosenNeighbor = unvisitedNeighbors[ Math.floor((Math.random() * unvisitedNeighbors.length))];
+
+				//2	Push the current cell to the stack
+				stack.push([lIndex,wIndex]);
+
+				//3	Remove the wall between the current cell and the chosen cell
+
+				maze[chosenNeighbor[0]][chosenNeighbor[1]] = ((maze[chosenNeighbor[0]][chosenNeighbor[1]]) - chosenNeighbor[3]);
+
+				maze[lIndex][wIndex] = maze[lIndex][wIndex] - chosenNeighbor[2];
+
+
+				//4	Make the chosen cell the current cell and mark it as visited
+
+				lIndex = chosenNeighbor[0];
+				wIndex = chosenNeighbor[1];
+
+				maze[lIndex][wIndex] = maze[lIndex][wIndex] + 10;
+
+				for (var a = 0; a<4; a++){
+					var i = mods[a][0] + lIndex;
+					var j = mods[a][1] + wIndex;
+					var dir = mods[a][2];
+					//safety first
+					if ( i>= 0 && j>= 0 && i<maze.length && j<maze[0].length){
+						maze[i][j] = maze[i][j]	+ 1;
+					}
+				}
+
+				visitedCount++;
+			} 
+
+		} else if (stack.length != 0) { //2	Else if stack is not empty
+			//1	Pop a cell from the stack
+			var cell = stack.pop();
+			//2	Make it the current cell
+			lIndex = cell[0];
+			wIndex = cell[1];
+		}
+	}
+}
+
+var s = [];
+var w = Math.floor((ctx.canvas.width)/20);
+var l = Math.floor((ctx.canvas.height)/20);
+
+console.log(w);
+console.log(l)
+var maze = createMaze(w,l);
+fillMaze(maze,s);
+drawMaze(maze);
+
+</script> 
+
+</body>
+</html>
